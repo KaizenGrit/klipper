@@ -1,0 +1,88 @@
+Extruder Calibration
+
+G28
+G28 X Y
+M109 S215
+G92 E0
+G1 E100 F100  This extrudes 100mm filament with 100mm/min.
+
+c := current value in configuration.cfg
+m := measured left over filament
+d := desired mm
+n := new value for configuration.cfg
+
+((120 - m) / d) * c = n
+((120 - 28) / 100) * 0.010500 = 0,009660
+(92 / 100) * 0.010500 = 0,009660
+
+
+
+
+TUNING_TOWER COMMAND="SET_HEATER_TEMPERATURE HEATER=extruder" PARAMETER=TARGET START=250 FACTOR=-1 BAND=10
+
+
+
+Tower layer change macro
+{if layer_z==1.6}
+; T tower floor 1
+M104 S215
+{elsif layer_z==11.6}
+; T tower floor 2
+M104 S205
+{elsif layer_z==21.6}
+; T tower floor 3
+M104 S195
+{elsif layer_z==31.6}
+; T tower floor 4
+M104 S185
+{endif}
+
+
+
+Cura linear advance 
+Klipper macro to set
+[gcode_macro m900]
+default_parameter_K: 0
+gcode:
+  SET_PRESSURE_ADVANCE ADVANCE={K}
+
+
+PROBE_CALIBRATE
+
+G28
+PROBE_CALIBRATE
+
+TESTZ Z=-5
+TESTZ Z=-1
+
+TESTZ Z=+ or -
+TESTZ Z=+ or TESTZ Z=- to “bisect” the last position 
+
+Then a TESTZ Z=- would move the nozzle to a Z position of 0.180 (half way between 0.130 and 0.230). One can use this feature to help rapidly narrow down to a consistent friction. It is also possible to use Z=++ and Z=-- to return directly to a past measurement - for example, after the above prompt a TESTZ Z=-- command would move the nozzle to a Z position of 0.130.
+
+After finding a small amount of friction run the ACCEPT command:
+
+ACCEPT
+
+
+
+[gcode_macro CANCEL_PRINT]
+gcode:
+   M220 S100 ; Reset Speed factor override percentage to default (100%)
+   M221 S100 ; Reset Extrude factor override percentage to default (100%)
+   G91 ; Set coordinates to relative
+   {% if printer.extruder.temperature >= 170 %}
+      G1 F1800 E-1 ; Retract filament 3 mm to prevent oozing
+   {% endif %}
+
+   ;if all axis are homed, lift the hotend to leave room for hot filament to ooze and to keep it clear of the bed.
+   {% if printer.toolhead.homed_axes == "xyz" %}
+      G1 F6000 Z10 ; Move Z Axis up 10 mm to allow filament ooze freely
+      G90 ; Set coordinates to absolute
+      G1 X0 Y221 F1000 ; Move Heat Bed to the front for easy print removal
+      M84 ; Disable stepper motors
+   {% endif %}
+
+   ;set part fan speed to zero.
+   M106 S0
+   ;bed and hotend are left at the print temps in case I want to restart.
