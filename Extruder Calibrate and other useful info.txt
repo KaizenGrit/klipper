@@ -1,3 +1,17 @@
+SET_GCODE_OFFSET Z=0.0
+
+Tuning pressure advance
+SET_VELOCITY_LIMIT SQUARE_CORNER_VELOCITY=1 ACCEL=500
+
+TUNING_TOWER COMMAND=SET_PRESSURE_ADVANCE PARAMETER=ADVANCE START=0 FACTOR=.005
+
+ docs/prints/square_tower.stl. Use a high speed (eg, 100mm/s), zero infill, and a coarse layer height (the layer height should be around 75% of the nozzle diameter)
+
+The pressure_advance value can then be calculated as pressure_advance = <start> + <measured_height> * <factor>. (For example, 0 + 12.90 * .020 would be .258.)
+
+RESTART
+
+*******************************
 Extruder Calibration
 
 G28
@@ -18,8 +32,41 @@ n := new value for configuration.cfg
 
 
 
-TUNING_TOWER COMMAND="SET_HEATER_TEMPERATURE HEATER=extruder" PARAMETER=TARGET START=250 FACTOR=-1 BAND=10
+TUNING_TOWER COMMAND="SET_HEATER_TEMPERATURE HEATER=extruder" PARAMETER=TARGET START=230 FACTOR=-1 BAND=10
+********************************************
 
+Klipper Resonance
+
+
+Suggested layer height is 0.2 or 0.25 mm.
+Infill and top layers can be set to 0.
+vase mode with 1-2 mm base.
+80-100 mm/sec, for external perimeters.
+minimum layer time is at most 3 seconds.
+“dynamic acceleration control” is disabled in the slicer.
+Do not turn the model
+
+Increase max_accel and max_accel_to_decel parameters in your printer.cfg to 7000. Note that this is only needed for tuning, and more proper value will be selected in the corresponding section.
+If square_corner_velocity parameter was changed, revert it back to 5.0. It is not advised to increase it when using the input shaper because it can cause more smoothing in parts - it is better to use higher acceleration value instead.
+Restart the firmware: RESTART.
+Disable Pressure Advance: 
+
+SET_PRESSURE_ADVANCE ADVANCE=0
+
+SET_INPUT_SHAPER SHAPER_FREQ_X=0 SHAPER_FREQ_Y=0
+
+TUNING_TOWER COMMAND=SET_VELOCITY_LIMIT PARAMETER=ACCEL START=1250 FACTOR=100 BAND=5
+
+Print the test model sliced with the suggested parameters.
+
+Count how many oscillations N the measured distance D corresponds to. If you are unsure how to count the oscillations, refer to the picture above, which shows N = 6 oscillations.
+Compute the ringing frequency of X axis as V · N / D (Hz), where V is the velocity for outer perimeters (mm/sec). For the example above, we marked 6 oscillations, and the test was printed at 
+
+100 mm/sec velocity, so the frequency is 100 * 6 / 12.14 ≈ 49.4 Hz.
+
+Do (9) - (11) for Y mark as well.
+
+******************************************
 
 
 Tower layer change macro
